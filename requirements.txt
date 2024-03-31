@@ -2,3 +2,8 @@ aiogram==2.23.1
 flask
 telebot
 requests
+random
+base64
+asyncio
+asyncio
+os
