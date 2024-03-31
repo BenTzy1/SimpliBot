@@ -1,7 +1,6 @@
 aiogram==2.23.1
 flask
 telebot
-re
 requests
 string
 base64
