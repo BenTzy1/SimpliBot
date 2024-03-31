@@ -26,8 +26,6 @@ def timestamp():
 bot = Bot(token='7019260893:AAEV8w6fJzvj4HHeOLtnCOywk-StGd20zr4')
 dp = Dispatcher(bot)
 
-bot = telebot.TeleBot(TOKEN)
-
 boosting_messages = {} 
 
 def load_accounts(filename):
