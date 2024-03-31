@@ -9,6 +9,8 @@ import asyncio
 import datetime
 import requests
 import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.utils import executor
 from keep_alive import keep_alive
 keep_alive()
 
