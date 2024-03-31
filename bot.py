@@ -1,35 +1,34 @@
-from sqlite3 import Timestamp
 import telebot
 import random
 import string
 import re
 from requests.structures import CaseInsensitiveDict
 import base64
-import asyncio
 import datetime
 import requests
 import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 from keep_alive import keep_alive
-keep_alive()
 
+# Initialize the Telegram bot
+bot = Bot(token=os.environ.get('token'))
+dp = Dispatcher(bot)
 
+# Dictionary to store authentication keys and activation status
 auth_keys = {}
+
+# Load authentication keys from file
 with open('keys.txt', 'r') as keys_file:
     for line in keys_file:
         user_id, auth_key, activated = line.strip().split(':')
         auth_keys[int(user_id)] = {'auth_key': auth_key, 'activated': bool(int(activated))}
 
+# Function to generate timestamp
 def timestamp():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-
-bot = Bot(token=os.environ.get('token'))
-dp = Dispatcher(bot)
-
-boosting_messages = {} 
-
+# Function to load accounts from a file
 def load_accounts(filename):
     accounts = []
     with open(filename, 'r') as file:
@@ -38,20 +37,21 @@ def load_accounts(filename):
             accounts.append(account_info)
     return accounts
 
-async def sendMessage(chat_id, text):
+# Function to send a message asynchronously
+async def send_message(chat_id, text):
     try:
         await bot.send_message(chat_id, text)
     except Exception as e:
         print(f"Error sending message: {e}")
 
+# Function to generate an authorization key based on Telegram username and ID
+def get_authorization_key(telegram_username, telegram_id):  
+    username_bytes = str(telegram_username).encode()
+    id_bytes = str(telegram_id).encode()
+    authorization_key_bytes = base64.b64encode(username_bytes) + b'|' + base64.b64encode(id_bytes)
+    return authorization_key_bytes.decode()
 
-
-def GetAuthorizationKey(telegramUsername, telegramId):  
-    username_bytes = str(telegramUsername).encode()
-    id_bytes = str(telegramId).encode()
-    AuthorizationKey: bytes = base64.b64encode(username_bytes) + b'|' + base64.b64encode(id_bytes)
-    return AuthorizationKey.decode()
-
+# Function to generate a random password
 def generate_random_password():
     letters_count = random.randint(5, 10)
     digits_count = 3
@@ -60,10 +60,12 @@ def generate_random_password():
     password = random_letters + random_digits
     return password
 
+# Function to clean response text
 def clean_response_text(response_text):
     cleaned_text = re.sub(r'[^ -~]+', '', response_text)
     return cleaned_text
 
+# Function to fetch the IP address using a proxy
 def fetch_ip(proxy):
     try:
         response = requests.get('http://httpbin.org/ip', proxies=proxy)
@@ -71,6 +73,7 @@ def fetch_ip(proxy):
     except requests.RequestException as e:
         return f"Error fetching IP: {e}"
 
+# Function to perform auto registration
 def auto_register(inv_code, proxy):
     url = "https://api.711bet2.com/gw/login/register"
     headers = CaseInsensitiveDict({
@@ -162,36 +165,29 @@ def auto_recharge(user_id, token, amount, currency, typ, pay_method, proxy):
         print(f"Error during auto recharge: {e}")
         return False, f"Error during auto recharge: {e}"
 
-async def readchat(text, message_id, user, chat_id):
-    filename = 'keys.txt'
-    accounts = load_accounts(filename)
-    skey = "SECRETKEY:" + GetAuthorizationKey(user.username, user.id)
-    print(timestamp() + " : " + f"Message Received from {user.first_name} [{user.id}] : {text}")
-    if skey in accounts:
-        if '/start' in text:
-            await sendMessage(chat_id, f"Hello, World!")
-
+# Function to handle the /start command
 @bot.message_handler(commands=['start'])
-def handle_start(message):
+async def handle_start(message):
     welcome_message = ("Welcome to Simpli Noob Bot!\n\n"
                        "The only function available for now is Boosting.\n"
                        "For other concerns please input\n"
                        "/help\n")
-    bot.reply_to(message, welcome_message)
+    await message.reply(welcome_message)
 
+# Function to handle the /help command
 @bot.message_handler(commands=['help'])
-def handle_help(message):
+async def handle_help(message):
     help_message = ("/help - shows all of the available commands\n\n"
                     "/auth - shows authentication key to activate your account\n"
                     "        If your account is not activated, please DM @simpli100 for activation\n\n"
                     "/boost - boost your account. Format: /boost INVITATION_CODE number_of_boosts\n"
                     "         Example: /boost 65f394375c041c198ad8b0c3 2\n"
                     "               REMINDER MAX BOOST IS 5 FOR NOT LAGGY SERVER")
-    bot.reply_to(message, help_message)
+    await message.reply(help_message)
 
-
+# Function to handle the /activate command
 @bot.message_handler(commands=['activate'])
-def handle_activate(message):
+async def handle_activate(message):
     if message.from_user.id == 6589378584:  # Assuming 6589378584 is the admin user ID
         command_parts = message.text.split()
         if len(command_parts) == 2:
@@ -208,19 +204,19 @@ def handle_activate(message):
                                 keys_file.write(f"{user_id}:{auth_key}:1\n")  # 1 indicates activated
                             else:
                                 keys_file.write(line)
-                    bot.reply_to(message, "Authentication key activated successfully!")
+                    await message.reply("Authentication key activated successfully!")
                 else:
-                    bot.reply_to(message, "User ID not found for the provided authentication key.")
+                    await message.reply("User ID not found for the provided authentication key.")
             else:
-                bot.reply_to(message, "Authentication key not found.")
+                await message.reply("Authentication key not found.")
         else:
-            bot.reply_to(message, "Invalid command format. Please use /activate <authentication_key>")
+            await message.reply("Invalid command format. Please use /activate <authentication_key>")
     else:
-        bot.reply_to(message, "You are not authorized to use this command.")
+        await message.reply("You are not authorized to use this command.")
 
-
+# Function to handle the /deactivate command
 @bot.message_handler(commands=['deactivate'])
-def handle_deactivate(message):
+async def handle_deactivate(message):
     if message.from_user.id == 6589378584:  # Assuming 6589378584 is the admin user ID
         command_parts = message.text.split()
         if len(command_parts) == 2:
@@ -236,22 +232,22 @@ def handle_deactivate(message):
                             keys_file.write(f"{user_id}:{auth_key}:0\n")  # 0 indicates not activated
                         else:
                             keys_file.write(line)
-                bot.reply_to(message, "Authentication key deactivated successfully!")
+                await message.reply("Authentication key deactivated successfully!")
             else:
-                bot.reply_to(message, "Authentication key not found.")
+                await message.reply("Authentication key not found.")
         else:
-            bot.reply_to(message, "Invalid command format. Please use /deactivate <authentication_key>")
+            await message.reply("Invalid command format. Please use /deactivate <authentication_key>")
     else:
-        bot.reply_to(message, "You are not authorized to use this command.")
+        await message.reply("You are not authorized to use this command.")
 
-
+# Function to handle the /boost command
 @bot.message_handler(commands=['boost'])
-def handle_boost(message):
+async def handle_boost(message):
     user_id = message.from_user.id
     if user_id in auth_keys and auth_keys[user_id]['activated']:
         command_parts = message.text.split()
         if len(command_parts) < 3:
-            bot.reply_to(message, "Error: Command Error Format: /boost Inv_Code_here number_of_boosts")
+            await message.reply("Error: Command Error Format: /boost Inv_Code_here number_of_boosts")
             return
 
         inv_code = command_parts[1]
@@ -266,7 +262,7 @@ def handle_boost(message):
             'https': f'http://{proxy_username}:{proxy_password}@{proxy_host}:{proxy_port}',
         }
 
-        initial_response = bot.reply_to(message, "PLEASE WAIT 1-3 MINS\nBOOSTING IS ON PROCESS")
+        initial_response = await message.reply("PLEASE WAIT 1-3 MINS\nBOOSTING IS ON PROCESS")
         boosting_messages[message.chat.id] = initial_response.message_id
 
         successful_accounts = []
@@ -293,25 +289,26 @@ def handle_boost(message):
         
         if len(successful_accounts) == num_boosts:
             accounts_message = "\n\n".join(successful_accounts)
-            bot.reply_to(message, f"Boosted successfully:\n\n{accounts_message}")
+            await message.reply(f"Boosted successfully:\n\n{accounts_message}")
         else:
             success_count = len(successful_accounts)
-            bot.reply_to(message, f"Boosted successfully: {success_count}\nFailed to boost: {failed_accounts}")
+            await message.reply(f"Boosted successfully: {success_count}\nFailed to boost: {failed_accounts}")
 
         chat_id = message.chat.id
         if chat_id in boosting_messages:
-            bot.delete_message(chat_id, boosting_messages[chat_id])
+            await bot.delete_message(chat_id, boosting_messages[chat_id])
             del boosting_messages[chat_id]
     else:
-        bot.reply_to(message, "You are not authorized to use this command. Please activate your authentication key using /auth.")
+        await message.reply("You are not authorized to use this command. Please activate your authentication key using /auth.")
 
+# Function to handle the /auth command
 @bot.message_handler(commands=['auth'])
-def handle_auth(message):
+async def handle_auth(message):
     user_id = message.from_user.id
     username = message.from_user.username
     try:
         # Generate authentication key
-        auth_key = GetAuthorizationKey(username, user_id)
+        auth_key = get_authorization_key(username, user_id)
         
         # Write authentication key to keys.txt file
         with open('bot/keys.txt', 'a') as keys_file:
@@ -321,10 +318,11 @@ def handle_auth(message):
         auth_keys[user_id] = {'auth_key': auth_key, 'activated': False}
 
         # Reply to the user with the generated authentication key
-        bot.reply_to(message, f"Your authentication key: {auth_key}")
+        await message.reply(f"Your authentication key: {auth_key}")
     except Exception as e:
         print(f"An error occurred during authentication: {e}")
-        bot.reply_to(message, "An error occurred during authentication. Please try again later.")
+        await message.reply("An error occurred during authentication. Please try again later.")
 
-
-bot.polling()
+# Start the bot
+if __name__ == '__main__':
+    executor.start_polling(dp)
