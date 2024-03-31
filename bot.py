@@ -1,4 +1,4 @@
-import telebot
+from aiogram import Bot
 import random
 import string
 import re
